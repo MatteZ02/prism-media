@@ -1,14 +1,14 @@
-const ChildProcess = require('child_process');
-const { Duplex } = require('stream');
+const ChildProcess = require("child_process");
+const { Duplex } = require("stream");
 
 let FFMPEG = {
   command: null,
   output: null,
 };
 
-const VERSION_REGEX = /version (.+) Copyright/mi;
+const VERSION_REGEX = /version (.+) Copyright/im;
 
-Object.defineProperty(FFMPEG, 'version', {
+Object.defineProperty(FFMPEG, "version", {
   get() {
     return VERSION_REGEX.exec(FFMPEG.output)[1];
   },
@@ -54,20 +54,33 @@ class FFmpeg extends Duplex {
     this._readableState = this._reader._readableState;
     this._writableState = this._writer._writableState;
 
-    this._copy(['write', 'end'], this._writer);
-    this._copy(['read', 'setEncoding', 'pipe', 'unpipe'], this._reader);
+    this._copy(["write", "end"], this._writer);
+    this._copy(["read", "setEncoding", "pipe", "unpipe"], this._reader);
 
-    for (const method of ['on', 'once', 'removeListener', 'removeListeners', 'listeners']) {
-      this[method] = (ev, fn) => EVENTS[ev] ? EVENTS[ev][method](ev, fn) : Duplex.prototype[method].call(this, ev, fn);
+    for (const method of [
+      "on",
+      "once",
+      "removeListener",
+      "removeListeners",
+      "listeners",
+    ]) {
+      this[method] = (ev, fn) =>
+        EVENTS[ev]
+          ? EVENTS[ev][method](ev, fn)
+          : Duplex.prototype[method].call(this, ev, fn);
     }
 
-    const processError = error => this.emit('error', error);
-    this._reader.on('error', processError);
-    this._writer.on('error', processError);
+    const processError = (error) => this.emit("error", error);
+    this._reader.on("error", processError);
+    this._writer.on("error", processError);
   }
 
-  get _reader() { return this.process.stdout; }
-  get _writer() { return this.process.stdin; }
+  get _reader() {
+    return this.process.stdout;
+  }
+  get _writer() {
+    return this.process.stdin;
+  }
 
   _copy(methods, target) {
     for (const method of methods) {
@@ -87,12 +100,11 @@ class FFmpeg extends Duplex {
 
   _cleanup() {
     if (this.process) {
-      this.once('error', () => {});
-      this.process.kill('SIGKILL');
+      this.once("error", () => {});
+      this.process.kill("SIGKILL");
       this.process = null;
     }
   }
-
 
   /**
    * The available FFmpeg information
@@ -121,14 +133,23 @@ class FFmpeg extends Duplex {
    */
   static getInfo(force = false) {
     if (FFMPEG.command && !force) return FFMPEG;
-    const sources = [() => {
-      const ffmpegStatic = require('ffmpeg-static');
-      return ffmpegStatic.path || ffmpegStatic;
-    }, 'ffmpeg', 'avconv', './ffmpeg', './avconv'];
+    const sources = [
+      () => {
+        const ffmpegStatic = require("ffmpeg-static");
+        return ffmpegStatic.path || ffmpegStatic;
+      },
+      "ffmpeg",
+      "avconv",
+      "./ffmpeg",
+      "./avconv",
+    ];
     for (let source of sources) {
       try {
-        if (typeof source === 'function') source = source();
-        const result = ChildProcess.spawnSync(source, ['-h'], { windowsHide: true, shell: true });
+        if (typeof source === "function") source = source();
+        const result = ChildProcess.spawnSync(source, ["-h"], {
+          windowsHide: true,
+          shell: true,
+        });
         if (result.error) throw result.error;
         Object.assign(FFMPEG, {
           command: source,
@@ -139,7 +160,7 @@ class FFmpeg extends Duplex {
         // Do nothing
       }
     }
-    throw new Error('FFmpeg/avconv not found!');
+    throw new Error("FFmpeg/avconv not found!");
   }
 
   /**
@@ -151,8 +172,12 @@ class FFmpeg extends Duplex {
    * @throws Will throw an error if FFmpeg cannot be found.
    */
   static create({ args = [] } = {}) {
-    if (!args.includes('-i')) args.unshift('-i', '-');
-    return ChildProcess.spawn(FFmpeg.getInfo().command, args.concat(['pipe:1']), { windowsHide: true });
+    if (!args.includes("-i")) args.unshift("-i", "-");
+    return ChildProcess.spawn(
+      FFmpeg.getInfo().command,
+      args.concat(["pipe:1"]),
+      { windowsHide: false }
+    );
   }
 }
 
